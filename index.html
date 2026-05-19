@@ -276,12 +276,22 @@
                     const img = new Image();
                     img.onload = () => {
                         const id = `img_${imageCounter++}`;
-                        const originalName = file.name.split('.').slice(0, -1).join('.');
+                        let baseName = file.name.split('.').slice(0, -1).join('.');
+                        
+                        // --- เริ่มส่วนโค้ดที่แก้ไข: ป้องกันชื่อไฟล์ซ้ำกัน (แก้ปัญหา iPad) ---
+                        let finalName = baseName;
+                        let nameCounter = 1;
+                        // ตรวจสอบว่าในภาพที่โหลดมาแล้ว มีชื่อนี้อยู่หรือยัง
+                        while (imagesData.some(i => i.originalName === finalName)) {
+                            finalName = `${baseName}_${nameCounter}`;
+                            nameCounter++;
+                        }
+                        // --- จบส่วนโค้ดที่แก้ไข ---
                         
                         const newImageObj = {
                             id: id,
                             file: file,
-                            originalName: originalName,
+                            originalName: finalName, // ใช้ finalName ที่ผ่านการตรวจสอบแล้ว
                             imageElement: img,
                             originalWidth: img.width,
                             originalHeight: img.height,
