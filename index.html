@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เครื่องมือปรับขนาดภาพ & แปลงเป็น WebP (แบบกลุ่ม)</title>
+    
+    <!-- PWA Meta Tags สำหรับ มือถือ และ แท็บเล็ต -->
+    <meta name="theme-color" content="#ea580c">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="WebP Resizer">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // เปิดใช้งาน Dark Mode แบบใช้ Class
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74',
+                            400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c',
+                            800: '#9a3412', 900: '#7c2d12',
+                        },
+                        darkbg: {
+                            main: '#121212',
+                            card: '#1e1e1e',
+                            hover: '#2a2a2a',
+                            border: '#333333'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        input[type="file"] { display: none; }
+        
+        /* Custom Scrollbar - รองรับ Dark Mode */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+        ::-webkit-scrollbar-thumb:hover { background: #f97316; }
+        
+        /* Animation กระพริบเมื่ออัปเดตค่า */
+        .highlight-update {
+            animation: highlightFlash 0.8s ease-out;
+        }
+        @keyframes highlightFlash {
+            0% { background-color: #fed7aa; border-color: #ea580c; transform: scale(1.02); }
+            100% { background-color: transparent; border-color: inherit; transform: scale(1); }
+        }
+        /* Animation สำหรับโหมดกลางคืน */
+        .dark .highlight-update {
+            animation: highlightFlashDark 0.8s ease-out;
+        }
+        @keyframes highlightFlashDark {
+            0% { background-color: #7c2d12; border-color: #f97316; transform: scale(1.02); }
+            100% { background-color: transparent; border-color: inherit; transform: scale(1); }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen p-4 md:p-8 bg-gray-50 dark:bg-darkbg-main text-gray-900 dark:text-gray-100">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        
+        <!-- Header & Upload Section -->
+        <div class="bg-white dark:bg-darkbg-card rounded-2xl shadow-lg overflow-hidden border border-gray-100 dark:border-darkbg-border transition-colors duration-300">
+            <div class="bg-brand-600 dark:bg-darkbg-card dark:border-b dark:border-darkbg-border p-6 text-center relative transition-colors duration-300">
+                
+                <button id="themeToggle" class="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-full bg-white/20 hover:bg-white/30 dark:bg-darkbg-hover dark:hover:bg-gray-700 transition-colors text-white dark:text-brand-500 shadow-sm" title="สลับโหมดกลางวัน/กลางคืน">
+                    <svg id="sunIcon" class="hidden w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <svg id="moonIcon" class="hidden w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                </button>
+
+                <!-- เพิ่มปุ่มติดตั้งแอป (แสดงอัตโนมัติเมื่ออุปกรณ์รองรับ PWA) -->
+                <button id="installAppBtn" class="hidden absolute top-4 right-16 sm:top-6 sm:right-20 px-3 py-2 rounded-lg bg-white text-brand-600 dark:bg-brand-600 dark:text-white font-medium text-xs sm:text-sm hover:scale-105 transition-transform shadow-md flex items-center gap-1" title="ติดตั้งแอพลงบนเครื่อง">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    ติดตั้งแอป
+                </button>
+
+                <h1 class="text-2xl sm:text-3xl font-semibold text-white dark:text-brand-500 mt-2 sm:mt-0">ปรับขนาดภาพ & แปลง WebP แบบกลุ่ม</h1>
+                <p class="text-brand-100 dark:text-gray-400 mt-2 text-sm sm:text-base">ลดขนาดและแปลงไฟล์หลายภาพพร้อมกัน รองรับการโหลดเป็นไฟล์ ZIP</p>
+            </div>
+
+            <div class="p-4 sm:p-6 bg-white dark:bg-darkbg-card">
+                <div id="uploadArea" class="border-2 border-dashed border-brand-300 dark:border-darkbg-border rounded-xl p-8 sm:p-10 text-center bg-brand-50 dark:bg-darkbg-main hover:bg-brand-100 dark:hover:bg-darkbg-hover transition-colors cursor-pointer relative">
+                    <label for="imageUpload" class="cursor-pointer flex flex-col items-center justify-center w-full h-full">
+                        <svg class="w-14 h-14 sm:w-16 sm:h-16 text-brand-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        <span class="text-brand-700 dark:text-brand-400 font-medium text-base sm:text-lg">คลิกเพื่อเลือกรูปภาพ หรือ ลากไฟล์มาวางที่นี่</span>
+                        <span class="text-brand-500 dark:text-gray-500 text-xs sm:text-sm mt-2">(เลือกได้หลายไฟล์พร้อมกัน รองรับ JPG, PNG, WEBP)</span>
+                    </label>
+                    <input type="file" id="imageUpload" accept="image/jpeg, image/png, image/webp" multiple>
+                </div>
+            </div>
+        </div>
+
+        <div id="globalControls" class="bg-white dark:bg-darkbg-card border border-gray-100 dark:border-darkbg-border rounded-2xl shadow-lg p-5 md:p-6 hidden transition-colors duration-300">
+            <!-- ส่วนบน: ตั้งค่าภาพรวม (Apply to All) -->
+            <div class="border-b border-gray-100 dark:border-darkbg-border pb-5 mb-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                    <h2 class="text-lg font-semibold text-brand-800 dark:text-brand-400 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        เครื่องมือปรับทุกภาพพร้อมกัน (Apply to All)
+                    </h2>
+                    <button onclick="clearAllImages()" class="text-red-600 dark:text-red-400 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 border border-red-200 dark:border-red-800/50 active:scale-95">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        ล้างข้อมูลทั้งหมด
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- แผงปรับขนาดทุกภาพ -->
+                    <div class="bg-brand-50/60 dark:bg-darkbg-main p-4 rounded-xl border border-brand-100 dark:border-darkbg-border">
+                        <span class="block text-sm font-medium text-brand-900 dark:text-gray-300 mb-3">ลดขนาดทุกภาพพร้อมกัน (%):</span>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button onclick="scaleAllImages(100)" class="py-2.5 bg-white dark:bg-darkbg-card hover:bg-gray-50 dark:hover:bg-darkbg-hover text-gray-700 dark:text-gray-300 rounded-lg text-xs sm:text-sm font-medium transition-colors border border-gray-200 dark:border-darkbg-border shadow-sm">100%</button>
+                            <button onclick="scaleAllImages(75)" class="py-2.5 bg-brand-100 dark:bg-brand-900/30 hover:bg-brand-200 dark:hover:bg-brand-900/50 text-brand-700 dark:text-brand-300 rounded-lg text-xs sm:text-sm font-medium transition-colors border border-brand-200 dark:border-brand-800 shadow-sm">75%</button>
+                            <button onclick="scaleAllImages(50)" class="py-2.5 bg-brand-100 dark:bg-brand-900/30 hover:bg-brand-200 dark:hover:bg-brand-900/50 text-brand-700 dark:text-brand-300 rounded-lg text-xs sm:text-sm font-medium transition-colors border border-brand-200 dark:border-brand-800 shadow-sm">50%</button>
+                            <button onclick="scaleAllImages(25)" class="py-2.5 bg-brand-100 dark:bg-brand-900/30 hover:bg-brand-200 dark:hover:bg-brand-900/50 text-brand-700 dark:text-brand-300 rounded-lg text-xs sm:text-sm font-medium transition-colors border border-brand-200 dark:border-brand-800 shadow-sm">25%</button>
+                        </div>
+                        <p class="text-[11px] sm:text-xs text-brand-500 dark:text-gray-500 mt-2">* ตัวเลขความกว้าง/สูง ของทุกภาพด้านล่างจะเปลี่ยนตามอัตโนมัติ</p>
+                    </div>
+
+                    <!-- แผงตั้งค่าคุณภาพและปุ่มโหลด -->
+                    <div class="flex flex-col justify-center">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                คำต่อท้ายชื่อไฟล์ <span class="text-brand-500 dark:text-brand-400 text-xs font-normal">(เว้นว่างเพื่อใช้ชื่อเดิม)</span>
+                            </label>
+                            <input type="text" id="fileNameSuffix" placeholder="เช่น _small หรือ -resized" class="w-full text-sm px-3 py-2 bg-white dark:bg-darkbg-main border border-gray-300 dark:border-darkbg-border text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-brand-500 outline-none transition-all">
+                        </div>
+
+                        <label class="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <span>คุณภาพไฟล์ WebP (ใช้ร่วมกัน)</span>
+                            <span id="globalQualityValue" class="text-brand-600 dark:text-brand-400 font-bold bg-brand-100 dark:bg-brand-900/50 px-2 py-0.5 rounded">80%</span>
+                        </label>
+                        <input type="range" id="globalQualityInput" min="10" max="100" value="80" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-brand-600 mb-5">
+                        
+                        <button id="downloadAllBtn" class="w-full bg-brand-600 hover:bg-brand-700 dark:bg-brand-600 dark:hover:bg-brand-500 active:scale-[0.98] text-white font-medium py-3.5 px-6 rounded-xl shadow-md transition-all flex justify-center items-center gap-2">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            บันทึกทั้งหมดเป็น ZIP
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- คำอธิบายส่วนปรับแยกทีละภาพ -->
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm sm:text-md font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    ตั้งค่าแยกทีละภาพ (Individual Settings)
+                </h3>
+                <span class="text-xs sm:text-sm bg-gray-100 dark:bg-darkbg-main text-gray-600 dark:text-gray-400 py-1 px-3 rounded-full font-medium border border-gray-200 dark:border-darkbg-border" id="imageCountBadge">0 ภาพ</span>
+            </div>
+            
+            <!-- Loading Indicator สำหรับดาวน์โหลด -->
+            <div id="loadingIndicator" class="hidden mt-4 text-center text-sm font-medium text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 py-3 rounded-lg border border-brand-200 dark:border-brand-800/50 flex justify-center items-center gap-2">
+                <svg class="animate-spin h-5 w-5 text-brand-600 dark:text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                กำลังประมวลผลไฟล์ ZIP กรุณารอสักครู่...
+            </div>
+        </div>
+
+        <!-- รายการรูปภาพ (Grid) -->
+        <div id="imageList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+            <!-- ภาพจะถูกแทรกที่นี่ด้วย JavaScript -->
+        </div>
+
+    </div>
+
+    <!-- Canvas ที่ซ่อนไว้สำหรับประมวลผล -->
+    <canvas id="imageCanvas" class="hidden"></canvas>
+
+    <script>
+        // DOM Elements
+        const imageUpload = document.getElementById('imageUpload');
+        const uploadArea = document.getElementById('uploadArea');
+        const globalControls = document.getElementById('globalControls');
+        const imageListContainer = document.getElementById('imageList');
+        const globalQualityInput = document.getElementById('globalQualityInput');
+        const globalQualityValue = document.getElementById('globalQualityValue');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const canvas = document.getElementById('imageCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // State เก็บข้อมูลรูปภาพทั้งหมด
+        let imagesData = [];
+        let imageCounter = 0;
+
+        // ---- ระบบ Dark Mode ----
+        const themeToggleBtn = document.getElementById('themeToggle');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+        const htmlElement = document.documentElement;
+
+        function updateThemeIcon(isDark) {
+            if (isDark) {
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            } else {
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            }
+        }
+
+        // ตรวจสอบค่าเริ่มต้น
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            htmlElement.classList.add('dark');
+            updateThemeIcon(true);
+        } else {
+            htmlElement.classList.remove('dark');
+            updateThemeIcon(false);
+        }
+
+        // สลับโหมด
+        themeToggleBtn.addEventListener('click', () => {
+            htmlElement.classList.toggle('dark');
+            const isDark = htmlElement.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon(isDark);
+        });
+        // -----------------------
+
+        // อัปเดตตัวเลข Quality
+        globalQualityInput.addEventListener('input', (e) => {
+            globalQualityValue.textContent = `${e.target.value}%`;
+        });
+
+        // 1. จัดการการอัปโหลดไฟล์
+        imageUpload.addEventListener('change', handleFileSelect);
+
+        // รองรับ Drag & Drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('bg-brand-100', 'dark:bg-darkbg-hover', 'border-brand-500', 'dark:border-brand-500');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('bg-brand-100', 'dark:bg-darkbg-hover', 'border-brand-500', 'dark:border-brand-500');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('bg-brand-100', 'dark:bg-darkbg-hover', 'border-brand-500', 'dark:border-brand-500');
+            if (e.dataTransfer.files.length > 0) {
+                processFiles(e.dataTransfer.files);
+            }
+        });
+
+        function handleFileSelect(e) {
+            if (e.target.files.length > 0) {
+                processFiles(e.target.files);
+            }
+            e.target.value = ''; // Reset
+        }
+
+        function processFiles(files) {
+            globalControls.classList.remove('hidden');
+
+            Array.from(files).forEach(file => {
+                if (!file.type.match('image.*')) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const id = `img_${imageCounter++}`;
+                        const originalName = file.name.split('.').slice(0, -1).join('.');
+                        
+                        const newImageObj = {
+                            id: id,
+                            file: file,
+                            originalName: originalName,
+                            imageElement: img,
+                            originalWidth: img.width,
+                            originalHeight: img.height,
+                            targetWidth: img.width,
+                            targetHeight: img.height,
+                            ratio: img.width / img.height
+                        };
+
+                        imagesData.push(newImageObj);
+                        renderImageCard(newImageObj);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 2. สร้าง UI สำหรับแต่ละรูปภาพ
+        function renderImageCard(imgData) {
+            const card = document.createElement('div');
+            card.id = `card-${imgData.id}`;
+            card.className = "bg-white dark:bg-darkbg-card rounded-xl shadow-sm hover:shadow-md overflow-hidden flex flex-col border border-gray-200 dark:border-darkbg-border transition-all duration-300";
+            
+            card.innerHTML = `
+                <!-- Preview & Header -->
+                <div class="relative bg-gray-50 dark:bg-black/40 h-40 sm:h-48 border-b border-gray-100 dark:border-darkbg-border p-2 sm:p-3 flex items-center justify-center group">
+                    <img src="${imgData.imageElement.src}" class="max-h-full max-w-full object-contain rounded drop-shadow-sm">
+                    <button onclick="removeImage('${imgData.id}')" class="absolute top-2 right-2 bg-red-500 text-white p-2 sm:p-1.5 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md" title="ลบรูปนี้">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                    <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/70 to-transparent pt-6 pb-1 px-2">
+                        <div class="text-white text-xs font-medium">${imgData.originalWidth} x ${imgData.originalHeight} (ต้นฉบับ)</div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="p-4 flex-1 flex flex-col">
+                    <p class="font-medium text-gray-800 dark:text-gray-200 text-sm truncate mb-3" title="${imgData.originalName}">${imgData.originalName}</p>
+                    
+                    <!-- ย่อขนาดด่วน (เฉพาะรูป) -->
+                    <div class="flex gap-1 mb-3">
+                        <button onclick="scaleImage('${imgData.id}', 100)" class="flex-1 py-1.5 bg-gray-100 dark:bg-darkbg-main hover:bg-gray-200 dark:hover:bg-darkbg-hover text-xs text-gray-700 dark:text-gray-300 rounded transition-colors border border-transparent dark:border-darkbg-border">100%</button>
+                        <button onclick="scaleImage('${imgData.id}', 75)" class="flex-1 py-1.5 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 text-xs text-brand-700 dark:text-brand-400 rounded transition-colors border border-brand-100 dark:border-brand-800/50">75%</button>
+                        <button onclick="scaleImage('${imgData.id}', 50)" class="flex-1 py-1.5 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 text-xs text-brand-700 dark:text-brand-400 rounded transition-colors border border-brand-100 dark:border-brand-800/50">50%</button>
+                        <button onclick="scaleImage('${imgData.id}', 25)" class="flex-1 py-1.5 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 text-xs text-brand-700 dark:text-brand-400 rounded transition-colors border border-brand-100 dark:border-brand-800/50">25%</button>
+                    </div>
+
+                    <!-- Input W / H -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="text-xs text-gray-500 dark:text-gray-400 mb-1 block">กว้าง (px)</label>
+                            <input type="number" id="w-${imgData.id}" value="${imgData.targetWidth}" oninput="updateManualSize('${imgData.id}', 'width', this.value)" class="w-full text-sm px-3 py-2 bg-white dark:bg-darkbg-main border border-gray-300 dark:border-darkbg-border text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-brand-500 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 dark:text-gray-400 mb-1 block">สูง (px)</label>
+                            <input type="number" id="h-${imgData.id}" value="${imgData.targetHeight}" oninput="updateManualSize('${imgData.id}', 'height', this.value)" class="w-full text-sm px-3 py-2 bg-white dark:bg-darkbg-main border border-gray-300 dark:border-darkbg-border text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-brand-500 outline-none transition-all">
+                        </div>
+                    </div>
+
+                    <!-- Spacer -->
+                    <div class="mt-auto"></div>
+
+                    <!-- ปุ่มบันทึกเดี่ยว -->
+                    <button onclick="downloadSingle('${imgData.id}')" class="w-full bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 font-medium py-2.5 px-3 rounded-lg text-sm transition-colors flex justify-center items-center gap-1 active:scale-[0.98]">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        บันทึก WebP
+                    </button>
+                </div>
+            `;
+            
+            imageListContainer.appendChild(card);
+            updateImageCount();
+        }
+
+        // 3. ฟังก์ชันปรับขนาด
+        function updateManualSize(id, type, value) {
+            const img = imagesData.find(i => i.id === id);
+            if (!img || !value) return;
+            
+            const val = parseInt(value);
+            if (type === 'width') {
+                img.targetWidth = val;
+                img.targetHeight = Math.round(val / img.ratio);
+                document.getElementById(`h-${id}`).value = img.targetHeight;
+            } else {
+                img.targetHeight = val;
+                img.targetWidth = Math.round(val * img.ratio);
+                document.getElementById(`w-${id}`).value = img.targetWidth;
+            }
+        }
+
+        function triggerHighlight(element) {
+            if (!element) return;
+            element.classList.remove('highlight-update');
+            void element.offsetWidth; // Trigger Reflow
+            element.classList.add('highlight-update');
+        }
+
+        function scaleImage(id, percent) {
+            const img = imagesData.find(i => i.id === id);
+            if (!img) return;
+
+            img.targetWidth = Math.max(1, Math.round(img.originalWidth * (percent / 100)));
+            img.targetHeight = Math.max(1, Math.round(img.originalHeight * (percent / 100)));
+            
+            const wInput = document.getElementById(`w-${id}`);
+            const hInput = document.getElementById(`h-${id}`);
+            
+            wInput.value = img.targetWidth;
+            hInput.value = img.targetHeight;
+            
+            triggerHighlight(wInput);
+            triggerHighlight(hInput);
+        }
+
+        function scaleAllImages(percent) {
+            if (imagesData.length === 0) return;
+            
+            imagesData.forEach(img => {
+                scaleImage(img.id, percent);
+            });
+            
+            const listContainer = document.getElementById('imageList');
+            const offset = listContainer.getBoundingClientRect().top + window.pageYOffset - 120;
+            window.scrollTo({ top: offset, behavior: 'smooth' });
+        }
+
+        function updateImageCount() {
+            const badge = document.getElementById('imageCountBadge');
+            if(badge) badge.textContent = `${imagesData.length} ภาพ`;
+        }
+
+        function removeImage(id) {
+            imagesData = imagesData.filter(i => i.id !== id);
+            const card = document.getElementById(`card-${id}`);
+            if (card) {
+                card.remove();
+            }
+            updateImageCount();
+            
+            if (imagesData.length === 0) {
+                globalControls.classList.add('hidden');
+            }
+        }
+
+        function clearAllImages() {
+            imagesData = [];
+            imageListContainer.innerHTML = '';
+            globalControls.classList.add('hidden');
+            updateImageCount();
+            imageUpload.value = ''; // รีเซ็ต input ไฟล์
+            imageCounter = 0;
+        }
+
+        // 4. ฟังก์ชันดาวน์โหลดและประมวลผล WebP
+        function getWebPBlob(imgData, quality) {
+            return new Promise((resolve) => {
+                canvas.width = imgData.targetWidth;
+                canvas.height = imgData.targetHeight;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(imgData.imageElement, 0, 0, imgData.targetWidth, imgData.targetHeight);
+                
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, 'image/webp', quality);
+            });
+        }
+
+        async function downloadSingle(id) {
+            const img = imagesData.find(i => i.id === id);
+            if (!img) return;
+
+            const quality = parseInt(globalQualityInput.value) / 100;
+            const blob = await getWebPBlob(img, quality);
+            
+            const suffix = document.getElementById('fileNameSuffix').value.trim();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            // นำชื่อเดิมมาต่อด้วย suffix (ถ้าช่องว่างเปล่า จะได้แต่ชื่อเดิม)
+            link.download = `${img.originalName}${suffix}.webp`;
+            link.href = url;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        downloadAllBtn.addEventListener('click', async () => {
+            if (imagesData.length === 0) return;
+
+            downloadAllBtn.disabled = true;
+            downloadAllBtn.classList.add('opacity-75', 'cursor-not-allowed');
+            loadingIndicator.classList.remove('hidden');
+
+            try {
+                const zip = new JSZip();
+                const quality = parseInt(globalQualityInput.value) / 100;
+                const suffix = document.getElementById('fileNameSuffix').value.trim();
+
+                for (const img of imagesData) {
+                    const blob = await getWebPBlob(img, quality);
+                    zip.file(`${img.originalName}${suffix}.webp`, blob);
+                }
+
+                const zipContent = await zip.generateAsync({ type: "blob" });
+                
+                const url = URL.createObjectURL(zipContent);
+                const link = document.createElement('a');
+                link.download = `WebP_Resized_Images_${new Date().getTime()}.zip`;
+                link.href = url;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+            } catch (error) {
+                console.error("Error creating ZIP:", error);
+                alert("เกิดข้อผิดพลาดในการสร้างไฟล์ ZIP");
+            } finally {
+                downloadAllBtn.disabled = false;
+                downloadAllBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+                loadingIndicator.classList.add('hidden');
+            }
+        });
+
+        // ---- ระบบ PWA (Progressive Web App) สำหรับมือถือและแท็บเล็ต ----
+        const installAppBtn = document.getElementById('installAppBtn');
+        let deferredPrompt;
+
+        // 1. สร้าง Manifest และ ไอคอน (สร้างแบบ on-the-fly เพื่อให้รวมในไฟล์เดียว)
+        const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><rect width="512" height="512" fill="#ea580c" rx="100"/><path fill="none" stroke="#fff" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" d="M100 350l120-120 90 90 100-100v180H100z"/><circle cx="200" cy="200" r="40" fill="#fff"/></svg>';
+        const iconUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(iconSvg);
+        
+        // สร้าง Apple Touch Icon เพื่อให้ iPad/iPhone รองรับ
+        const appleIcon = document.createElement('link');
+        appleIcon.rel = 'apple-touch-icon';
+        appleIcon.href = iconUrl;
+        document.head.appendChild(appleIcon);
+
+        const manifest = {
+            name: "เครื่องมือแปลง WebP",
+            short_name: "WebP Resizer",
+            description: "โปรแกรมลดขนาดและแปลงไฟล์ WebP",
+            start_url: ".",
+            display: "standalone",
+            background_color: htmlElement.classList.contains('dark') ? "#121212" : "#f9fafb",
+            theme_color: "#ea580c",
+            icons: [
+                { src: iconUrl, sizes: "192x192", type: "image/svg+xml" },
+                { src: iconUrl, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+            ]
+        };
+
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = URL.createObjectURL(manifestBlob);
+        document.head.appendChild(manifestLink);
+
+        // 2. ลบ Service Worker ออกเพื่อแก้ปัญหา "blob: URL not supported"
+        // เนื่องจากการทำ PWA แบบสมบูรณ์ เบราว์เซอร์บังคับว่าต้องมีไฟล์ sw.js แยกต่างหากเท่านั้น
+        console.log('Manifest ถูกโหลดแล้ว (สามารถใช้ Add to Home Screen ได้ผ่านเมนูเบราว์เซอร์)');
+
+        // 3. ดักจับเหตุการณ์ติดตั้ง (สำหรับ Android, แท็บเล็ต, PC)
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installAppBtn.classList.remove('hidden'); // แสดงปุ่มติดตั้งบน UI
+        });
+
+        installAppBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('ติดตั้งแอปสำเร็จ');
+                }
+                deferredPrompt = null;
+                installAppBtn.classList.add('hidden'); 
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            installAppBtn.classList.add('hidden');
+        });
+        
+        // หมายเหตุสำหรับ iOS (iPad/iPhone): ระบบจะไม่แสดงปุ่มติดตั้งอัตโนมัติ 
+        // ผู้ใช้จะต้องกดแชร์ (Share) ที่บราวเซอร์ Safari แล้วเลือก "Add to Home Screen" หรือ "เพิ่มไปยังหน้าจอโฮม"
+
+    </script>
+</body>
+</html>
