@@ -134,13 +134,31 @@
                         <p class="text-[11px] sm:text-xs text-brand-500 dark:text-gray-500 mt-2">* ตัวเลขความกว้าง/สูง ของทุกภาพด้านล่างจะเปลี่ยนตามอัตโนมัติ</p>
                     </div>
 
-                    <!-- แผงตั้งค่าคุณภาพและปุ่มโหลด -->
+                    <!-- แผงตั้งค่าการบันทึกและปุ่มโหลด -->
                     <div class="flex flex-col justify-center">
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                คำต่อท้ายชื่อไฟล์ <span class="text-brand-500 dark:text-brand-400 text-xs font-normal">(เว้นว่างเพื่อใช้ชื่อเดิม)</span>
-                            </label>
-                            <input type="text" id="fileNameSuffix" placeholder="เช่น _small หรือ -resized" class="w-full text-sm px-3 py-2 bg-white dark:bg-darkbg-main border border-gray-300 dark:border-darkbg-border text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-brand-500 outline-none transition-all">
+                        
+                        <!-- การตั้งค่าการบันทึก (หลายขนาด) -->
+                        <div class="mb-4 bg-brand-50/50 dark:bg-darkbg-main p-3.5 rounded-xl border border-brand-100 dark:border-darkbg-border">
+                            <label class="block text-sm font-medium text-brand-900 dark:text-gray-300 mb-2 border-b border-brand-200 dark:border-darkbg-border pb-1">การส่งออกไฟล์ (ZIP เลือกได้ 2 ขนาด)</label>
+
+                            <!-- Size 1 -->
+                            <div class="flex items-center gap-2 mb-2.5 mt-2">
+                                <input type="checkbox" id="exportSize1" checked class="w-4 h-4 text-brand-600 bg-white border-gray-300 rounded focus:ring-brand-500 cursor-pointer">
+                                <span class="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap" style="min-width: 80px;" title="อิงจากขนาดที่แสดงผลในแต่ละรูปด้านล่าง">1. ขนาดหลัก</span>
+                                <input type="text" id="suffix1" placeholder="คำต่อท้าย (เว้นว่างได้)" class="flex-1 w-full text-xs sm:text-sm px-2.5 py-1.5 bg-white dark:bg-darkbg-card border border-gray-300 dark:border-darkbg-border text-gray-900 dark:text-white rounded focus:ring-2 focus:ring-brand-500 outline-none transition-all">
+                            </div>
+
+                            <!-- Size 2 -->
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="exportSize2" class="w-4 h-4 text-brand-600 bg-white border-gray-300 rounded focus:ring-brand-500 cursor-pointer">
+                                <span class="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap" style="min-width: 80px;" title="ย่อสัดส่วนลงจากขนาดหลัก">2. เพิ่มอีกไฟล์</span>
+                                <select id="scale2" class="text-xs sm:text-sm px-1 py-1.5 bg-white dark:bg-darkbg-card border border-gray-300 dark:border-darkbg-border text-gray-900 dark:text-white rounded focus:ring-2 focus:ring-brand-500 outline-none cursor-pointer">
+                                    <option value="75">ย่อ 75%</option>
+                                    <option value="50" selected>ย่อ 50%</option>
+                                    <option value="25">ย่อ 25%</option>
+                                </select>
+                                <input type="text" id="suffix2" value="_small" placeholder="คำต่อท้าย" class="flex-1 w-full text-xs sm:text-sm px-2.5 py-1.5 bg-white dark:bg-darkbg-card border border-gray-300 dark:border-darkbg-border text-gray-900 dark:text-white rounded focus:ring-2 focus:ring-brand-500 outline-none transition-all">
+                            </div>
                         </div>
 
                         <label class="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -278,20 +296,18 @@
                         const id = `img_${imageCounter++}`;
                         let baseName = file.name.split('.').slice(0, -1).join('.');
                         
-                        // --- เริ่มส่วนโค้ดที่แก้ไข: ป้องกันชื่อไฟล์ซ้ำกัน (แก้ปัญหา iPad) ---
+                        // ป้องกันชื่อไฟล์ซ้ำกัน
                         let finalName = baseName;
                         let nameCounter = 1;
-                        // ตรวจสอบว่าในภาพที่โหลดมาแล้ว มีชื่อนี้อยู่หรือยัง
                         while (imagesData.some(i => i.originalName === finalName)) {
                             finalName = `${baseName}_${nameCounter}`;
                             nameCounter++;
                         }
-                        // --- จบส่วนโค้ดที่แก้ไข ---
                         
                         const newImageObj = {
                             id: id,
                             file: file,
-                            originalName: finalName, // ใช้ finalName ที่ผ่านการตรวจสอบแล้ว
+                            originalName: finalName,
                             imageElement: img,
                             originalWidth: img.width,
                             originalHeight: img.height,
@@ -358,10 +374,10 @@
                     <!-- Spacer -->
                     <div class="mt-auto"></div>
 
-                    <!-- ปุ่มบันทึกเดี่ยว -->
+                    <!-- ปุ่มบันทึกเดี่ยว (จะยึดตามขนาดหลักเท่านั้น) -->
                     <button onclick="downloadSingle('${imgData.id}')" class="w-full bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 font-medium py-2.5 px-3 rounded-lg text-sm transition-colors flex justify-center items-center gap-1 active:scale-[0.98]">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        บันทึก WebP
+                        บันทึก WebP (ขนาดหลัก)
                     </button>
                 </div>
             `;
@@ -461,12 +477,13 @@
         }
 
         // 4. ฟังก์ชันดาวน์โหลดและประมวลผล WebP
-        function getWebPBlob(imgData, quality) {
+        // ปรับให้รับขนาด กว้าง/สูง แบบเจาะจง
+        function getWebPBlob(imgData, width, height, quality) {
             return new Promise((resolve) => {
-                canvas.width = imgData.targetWidth;
-                canvas.height = imgData.targetHeight;
+                canvas.width = width;
+                canvas.height = height;
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(imgData.imageElement, 0, 0, imgData.targetWidth, imgData.targetHeight);
+                ctx.drawImage(imgData.imageElement, 0, 0, width, height);
                 
                 canvas.toBlob((blob) => {
                     resolve(blob);
@@ -474,17 +491,19 @@
             });
         }
 
+        // การดาวน์โหลดแบบเดี่ยว (จะใช้ขนาดหลักเสมอ)
         async function downloadSingle(id) {
             const img = imagesData.find(i => i.id === id);
             if (!img) return;
 
             const quality = parseInt(globalQualityInput.value) / 100;
-            const blob = await getWebPBlob(img, quality);
+            const blob = await getWebPBlob(img, img.targetWidth, img.targetHeight, quality);
             
-            const suffix = document.getElementById('fileNameSuffix').value.trim();
+            // ดึงคำต่อท้ายของ "ขนาดหลัก" มาใช้
+            const suffix = document.getElementById('suffix1').value.trim();
+            
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            // นำชื่อเดิมมาต่อด้วย suffix (ถ้าช่องว่างเปล่า จะได้แต่ชื่อเดิม)
             link.download = `${img.originalName}${suffix}.webp`;
             link.href = url;
             document.body.appendChild(link);
@@ -493,8 +512,17 @@
             URL.revokeObjectURL(url);
         }
 
+        // การดาวน์โหลดแบบ ZIP (รองรับหลายขนาดพร้อมกัน)
         downloadAllBtn.addEventListener('click', async () => {
             if (imagesData.length === 0) return;
+
+            const exportSize1 = document.getElementById('exportSize1').checked;
+            const exportSize2 = document.getElementById('exportSize2').checked;
+
+            if (!exportSize1 && !exportSize2) {
+                alert('กรุณาติ๊กเลือกขนาดที่ต้องการบันทึกอย่างน้อย 1 ช่องครับ');
+                return;
+            }
 
             downloadAllBtn.disabled = true;
             downloadAllBtn.classList.add('opacity-75', 'cursor-not-allowed');
@@ -503,11 +531,32 @@
             try {
                 const zip = new JSZip();
                 const quality = parseInt(globalQualityInput.value) / 100;
-                const suffix = document.getElementById('fileNameSuffix').value.trim();
+                
+                const suffix1 = document.getElementById('suffix1').value.trim();
+                const suffix2 = document.getElementById('suffix2').value.trim();
+                const scale2 = parseInt(document.getElementById('scale2').value) / 100;
 
                 for (const img of imagesData) {
-                    const blob = await getWebPBlob(img, quality);
-                    zip.file(`${img.originalName}${suffix}.webp`, blob);
+                    // ประมวลผลขนาดที่ 1 (ขนาดหลักที่ตั้งค่าไว้ใน UI)
+                    if (exportSize1) {
+                        const blob1 = await getWebPBlob(img, img.targetWidth, img.targetHeight, quality);
+                        zip.file(`${img.originalName}${suffix1}.webp`, blob1);
+                    }
+
+                    // ประมวลผลขนาดที่ 2 (ย่อจากขนาดหลักอีกที)
+                    if (exportSize2) {
+                        const w2 = Math.max(1, Math.round(img.targetWidth * scale2));
+                        const h2 = Math.max(1, Math.round(img.targetHeight * scale2));
+                        const blob2 = await getWebPBlob(img, w2, h2, quality);
+                        
+                        // ป้องกันชื่อไฟล์ทับกันเองในกรณีที่ตั้งชื่อต่อท้ายเหมือนกันเป๊ะ
+                        let finalName2 = `${img.originalName}${suffix2}.webp`;
+                        if (exportSize1 && suffix1 === suffix2) {
+                            finalName2 = `${img.originalName}${suffix2}_2.webp`;
+                        }
+                        
+                        zip.file(finalName2, blob2);
+                    }
                 }
 
                 const zipContent = await zip.generateAsync({ type: "blob" });
@@ -535,11 +584,9 @@
         const installAppBtn = document.getElementById('installAppBtn');
         let deferredPrompt;
 
-        // 1. สร้าง Manifest และ ไอคอน (สร้างแบบ on-the-fly เพื่อให้รวมในไฟล์เดียว)
         const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><rect width="512" height="512" fill="#ea580c" rx="100"/><path fill="none" stroke="#fff" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" d="M100 350l120-120 90 90 100-100v180H100z"/><circle cx="200" cy="200" r="40" fill="#fff"/></svg>';
         const iconUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(iconSvg);
         
-        // สร้าง Apple Touch Icon เพื่อให้ iPad/iPhone รองรับ
         const appleIcon = document.createElement('link');
         appleIcon.rel = 'apple-touch-icon';
         appleIcon.href = iconUrl;
@@ -565,15 +612,12 @@
         manifestLink.href = URL.createObjectURL(manifestBlob);
         document.head.appendChild(manifestLink);
 
-        // 2. ลบ Service Worker ออกเพื่อแก้ปัญหา "blob: URL not supported"
-        // เนื่องจากการทำ PWA แบบสมบูรณ์ เบราว์เซอร์บังคับว่าต้องมีไฟล์ sw.js แยกต่างหากเท่านั้น
         console.log('Manifest ถูกโหลดแล้ว (สามารถใช้ Add to Home Screen ได้ผ่านเมนูเบราว์เซอร์)');
 
-        // 3. ดักจับเหตุการณ์ติดตั้ง (สำหรับ Android, แท็บเล็ต, PC)
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            installAppBtn.classList.remove('hidden'); // แสดงปุ่มติดตั้งบน UI
+            installAppBtn.classList.remove('hidden'); 
         });
 
         installAppBtn.addEventListener('click', async () => {
@@ -591,9 +635,6 @@
         window.addEventListener('appinstalled', () => {
             installAppBtn.classList.add('hidden');
         });
-        
-        // หมายเหตุสำหรับ iOS (iPad/iPhone): ระบบจะไม่แสดงปุ่มติดตั้งอัตโนมัติ 
-        // ผู้ใช้จะต้องกดแชร์ (Share) ที่บราวเซอร์ Safari แล้วเลือก "Add to Home Screen" หรือ "เพิ่มไปยังหน้าจอโฮม"
 
     </script>
 </body>
